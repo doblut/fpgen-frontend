@@ -84,7 +84,7 @@ export default function App() {
 	const [gpu, setGpu] = React.useState(0);
 	const [backgroundFile, setBackgroundFile] = React.useState(fingerprint);
 	const [arrowsImage, setArrowsImage] = React.useState(null);
-	const [fpScore, setFpScore] = React.useState(0);
+	const [fpScore, setFpScore] = React.useState(null);
 
 	const handleChangeVariant = (event) => {
 		setVariant(event.target.value);
@@ -103,6 +103,20 @@ export default function App() {
 		setStyleganSeed(makeSeed());
 	}
 
+	const handleResponse = (image) => {
+		setResultImage(URL.createObjectURL(image));
+		var data = new FormData()
+		data.append('type', 'file');
+		data.append("image", image)
+		const requestOptions = {
+			method: 'POST',
+			body: data
+		};
+		fetch('http://halde.cs.uni-magdeburg.de:8070/nfiq2/single', requestOptions)
+			.then(response => response.json())
+			.then(data => setFpScore(data.score.toFixed(2)))
+	}
+
 	const handleOpen = () => {
 		setOpen(true);
 		if (variant === "StyleGAN" || variant === "StyleGAN2" || variant === "ProgressiveGAN") {
@@ -111,19 +125,17 @@ export default function App() {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ seed: `${styleganSeed}`, gpu: `${gpu}` })
 			};
-			fetch(`http://halde.cs.uni-magdeburg.de:8070/${variant.toLowerCase()}/generate`, requestOptions)
+			fetch(`http://halde.cs.uni-magdeburg.de:8070/${variant === "ProgressiveGAN" ? "pggan" : variant.toLowerCase()}/generate`, requestOptions)
 				.then(response => response.blob())
-				.then(imageBlob => setResultImage(URL.createObjectURL(imageBlob)));
+				.then(imageBlob => handleResponse(imageBlob));
 		} else {
-			console.log(arrowsImage)
 			const requestOptions = {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ image: `${arrowsImage}`, gpu: `${gpu}` })
+				body: arrowsImage
 			};
 			fetch('http://halde.cs.uni-magdeburg.de:8070/pix2pix/generate', requestOptions)
 				.then(response => response.blob())
-				.then(imageBlob => setResultImage(URL.createObjectURL(imageBlob)));
+				.then(imageBlob => handleResponse(imageBlob));
 		}
 	}
 
@@ -131,6 +143,7 @@ export default function App() {
 		setOpen(false);
 		setTimeout((() => {
 			setResultImage(null);
+			setFpScore(null)
 		}), 200)
 
 	}
@@ -303,7 +316,7 @@ export default function App() {
 				<DialogTitle>Fingerabdruck</DialogTitle>
 				<DialogContent>
 					<DialogContentText align="center">
-						{resultImage ? <Stack direction="coloumn" spacing={2}><img src={resultImage} /> <Typography variant="body">Qualität: {fpScore}%</Typography></Stack> : <CircularProgress />}
+						{resultImage ? <Stack sx={{ alignItems: 'center' }} spacing={2}><img src={resultImage} /> {fpScore ? <Typography variant="body">Qualität: {fpScore}%</Typography> : <CircularProgress />}</Stack> : <CircularProgress />}
 
 					</DialogContentText>
 				</DialogContent>
