@@ -47,9 +47,12 @@ const fabGreenStyle = {
 	'&:hover': {
 		bgcolor: green[600],
 	},
-	position: 'absolute',
+	margin: 0,
+	top: 'auto',
+	right: 20,
 	bottom: 20,
-	right: 15,
+	left: 'auto',
+	position: 'fixed',
 };
 
 const Item = styled(Paper)(({ theme }) => ({
@@ -80,6 +83,8 @@ export default function App() {
 	const [resultImage, setResultImage] = React.useState(null);
 	const [gpu, setGpu] = React.useState(0);
 	const [backgroundFile, setBackgroundFile] = React.useState(fingerprint);
+	const [arrowsImage, setArrowsImage] = React.useState(null);
+	const [fpScore, setFpScore] = React.useState(0);
 
 	const handleChangeVariant = (event) => {
 		setVariant(event.target.value);
@@ -100,12 +105,26 @@ export default function App() {
 
 	const handleOpen = () => {
 		setOpen(true);
-		setTimeout((() => {
-			fetch('http://localhost:7777/pix2pix')
+		if (variant === "StyleGAN" || variant === "StyleGAN2" || variant === "ProgressiveGAN") {
+			const requestOptions = {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ seed: `${styleganSeed}`, gpu: `${gpu}` })
+			};
+			fetch(`http://halde.cs.uni-magdeburg.de:8070/${variant.toLowerCase()}/generate`, requestOptions)
 				.then(response => response.blob())
 				.then(imageBlob => setResultImage(URL.createObjectURL(imageBlob)));
-		}), 2000)
-
+		} else {
+			console.log(arrowsImage)
+			const requestOptions = {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ image: `${arrowsImage}`, gpu: `${gpu}` })
+			};
+			fetch('http://halde.cs.uni-magdeburg.de:8070/pix2pix/generate', requestOptions)
+				.then(response => response.blob())
+				.then(imageBlob => setResultImage(URL.createObjectURL(imageBlob)));
+		}
 	}
 
 	const handleClose = () => {
@@ -127,6 +146,10 @@ export default function App() {
 
 	const newArrow = (list) => {
 		setArrowList([...list]);
+	}
+
+	const getArrowsImage = (image) => {
+		setArrowsImage(image);
 	}
 
 	const changeFile = (file) => {
@@ -155,7 +178,7 @@ export default function App() {
 							<ArrowRightAltIcon />
 						</ListItemAvatar>
 						<ListItemText
-							primary={`${index + 1}. Minutie`}
+							primary={`${index + 1}. Minuzie`}
 							secondary={`Farbe: ${item.color === "white" ? "Weiß" : "Schwarz"} | Start(x/y): ${Math.round(item.startx)}/${Math.round(item.starty)} | Spitze(x/y): ${Math.round(item.x)}/${Math.round(item.y)}`}
 						/>
 					</ListItem>))
@@ -168,14 +191,15 @@ export default function App() {
 		<React.Fragment>
 			<AppBar sx={{ backgroundColor: 'white' }} position="static">
 				<Container>
-					<Toolbar disableGutters>
+					<Toolbar sx={{ mt: 1 }} disableGutters>
 						<img src={amsl_logo} alt="logo" />
 					</Toolbar>
 				</Container>
 			</AppBar>
 			<Container sx={{ height: "100%", width: "100vw" }} >
-
-
+				<Typography variant="h3" gutterBottom sx={{ mb: 2, mt: 2 }}>
+					Fingerabdruck Generator
+				</Typography>
 				<Box sx={{ flexGrow: 1, mt: 2 }}>
 					<Grid container spacing={2}>
 						<Grid xs={6} md={12}>
@@ -196,6 +220,7 @@ export default function App() {
 									>
 										<FormControlLabel value="StyleGAN" control={<Radio />} label="StyleGAN" />
 										<FormControlLabel value="StyleGAN2" control={<Radio />} label="StyleGAN2" />
+										<FormControlLabel value="ProgressiveGAN" control={<Radio />} label="ProgressiveGAN" />
 										<FormControlLabel value="Pix2Pix" control={<Radio />} label="Pix2Pix" />
 									</RadioGroup>
 								</FormControl>
@@ -224,7 +249,7 @@ export default function App() {
 							</Item>
 						</Grid>
 					</Grid>
-					{variant === "StyleGAN" || variant === "StyleGAN2" ?
+					{variant === "StyleGAN" || variant === "StyleGAN2" || variant === "ProgressiveGAN" ?
 						<Grid sx={{ mt: 1 }} container spacing={2}>
 							<Grid xs={6} md={12}>
 								<Item>
@@ -249,13 +274,19 @@ export default function App() {
 						<Grid sx={{ mt: 1 }} container spacing={2}>
 							<Grid xs={6} md={6}>
 								<Item>
-									<Canvas background={backgroundFile} changeFile={changeFile} arrowList={arrowList} onChange={newArrow} />
+									<Typography variant="h6">
+										Minuzien
+									</Typography>
+									<Typography sx={{ mb: 2, mt: 2 }} variant="body2">
+										Bitte setze per Klick beliebig viele Minuzien auf den unten abgebildeten Fingerabdruck. Schwarze Minuzien stehen für Endungen der Papillarleisten und weiße Minuzien für Inseln der Papillarleisten. Es ist ebenfalls möglich, eine eigene Fingerabdruckvorlage hochzuladen, diese Vorlage hat keinen Einfluss auf die Generierung eines Fingerabdrucks.
+									</Typography>
+									<Canvas getArrowsImage={getArrowsImage} background={backgroundFile} changeFile={changeFile} arrowList={arrowList} onChange={newArrow} />
 								</Item>
 							</Grid>
 							<Grid xs={6} md={6}>
 								<Item>
-									<Typography variant="h6" gutterBottom sx={{ marginBottom: 2 }}>
-										Gesetzte Minutien
+									<Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+										Gesetzte Minuzien
 									</Typography>
 									{arrowList ? makeList(arrowList) : null}
 								</Item>
@@ -272,7 +303,7 @@ export default function App() {
 				<DialogTitle>Fingerabdruck</DialogTitle>
 				<DialogContent>
 					<DialogContentText align="center">
-						{resultImage ? <img src={resultImage} /> : <CircularProgress />}
+						{resultImage ? <Stack direction="coloumn" spacing={2}><img src={resultImage} /> <Typography variant="body">Qualität: {fpScore}%</Typography></Stack> : <CircularProgress />}
 
 					</DialogContentText>
 				</DialogContent>

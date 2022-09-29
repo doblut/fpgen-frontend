@@ -7,6 +7,7 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import Slider from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 
 class Drawable {
@@ -143,6 +144,7 @@ class Canvas extends Component {
 			width: 0,
 			height: 0
 		};
+		this.canvas = React.createRef();
 	}
 
 	componentDidUpdate(nextProps) {
@@ -150,6 +152,7 @@ class Canvas extends Component {
 			this.setState({
 				drawables: nextProps.arrowList
 			});
+			this.handleExport()
 		}
 		if (nextProps.background !== this.state.background) {
 			this.setState({
@@ -267,6 +270,15 @@ class Canvas extends Component {
 		})
 	}
 
+	handleExport = () => {
+		if (this.canvas.current.attrs.width >= 0 && this.canvas.current.attrs.height && this.canvas.current.children[0].children[0]) {
+			this.canvas.current.children[0].children[0].visible(false)
+			const uri = this.canvas.current.children[0].toDataURL()
+			this.canvas.current.children[0].children[0].visible(true)
+			this.props.getArrowsImage(uri)
+		}
+	};
+
 	render() {
 		const drawables = [...this.state.drawables, ...this.state.newDrawable];
 		return (
@@ -278,8 +290,8 @@ class Canvas extends Component {
 					onChange={this.handleChangeVariant}
 				>
 					<Stack direction="row" spacing={2} sx={{ ml: 1 }}>
-						<FormControlLabel value="ArrowDrawableBlack" control={<Radio />} label="Schwarze Minutie" />
-						<FormControlLabel value="ArrowDrawableWhite" control={<Radio />} label="Weiße Minutie" />
+						<FormControlLabel value="ArrowDrawableBlack" control={<Radio />} label="Schwarze Minuzie" />
+						<FormControlLabel value="ArrowDrawableWhite" control={<Radio />} label="Weiße Minuzie" />
 						<Button onClick={() => this.upload.click()} startIcon={<FileUploadIcon />} variant="contained">
 							Vorlage
 						</Button>
@@ -291,17 +303,22 @@ class Canvas extends Component {
 						/>
 
 					</Stack>
-					<Slider
-						sx={{ width: "30%", ml: 2, mb: 2 }}
-						defaultValue={1}
-						getAriaValueText={() => `${this.state.scaling}`}
-						valueLabelDisplay="auto"
-						step={0.2}
-						marks
-						min={1}
-						max={3}
-						onChange={this.changeScaling}
-					/>
+					<Stack direction="row" sx={{ alignItems: "center", ml: 2, mt: 2, mb: 2 }}>
+						<Typography variant="body">
+							Skalierung:
+						</Typography>
+						<Slider
+							sx={{ width: "30%", ml: 3 }}
+							defaultValue={1}
+							getAriaValueText={() => `${this.state.scaling}`}
+							valueLabelDisplay="auto"
+							step={0.2}
+							marks
+							min={1}
+							max={3}
+							onChange={this.changeScaling}
+						/>
+					</Stack>
 				</RadioGroup>
 				<Stage
 					onMouseDown={this.handleMouseDown}
@@ -309,6 +326,7 @@ class Canvas extends Component {
 					onMouseMove={this.handleMouseMove}
 					width={this.state.width}
 					height={this.state.height}
+					ref={this.canvas}
 				>
 					<Layer>
 						<BackgroundImage src={this.state.background} scaling={this.state.scaling} handleSize={this.handleSize} />
