@@ -29,6 +29,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
+import Slider from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Toolbar from '@mui/material/Toolbar';
@@ -85,6 +86,7 @@ export default function App() {
 	const [backgroundFile, setBackgroundFile] = React.useState(fingerprint);
 	const [arrowsImage, setArrowsImage] = React.useState(null);
 	const [fpScore, setFpScore] = React.useState(null);
+	const [truncation, setTruncation] = React.useState(0);
 
 	const handleChangeVariant = (event) => {
 		setVariant(event.target.value);
@@ -119,13 +121,23 @@ export default function App() {
 
 	const handleOpen = () => {
 		setOpen(true);
-		if (variant === "StyleGAN" || variant === "StyleGAN2" || variant === "ProgressiveGAN") {
+		if (variant === "StyleGAN" || variant === "StyleGAN2") {
 			const requestOptions = {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ seed: `${styleganSeed}`, gpu: `${gpu}` })
 			};
-			fetch(`http://halde.cs.uni-magdeburg.de:8070/${variant === "ProgressiveGAN" ? "pggan" : variant.toLowerCase()}/generate`, requestOptions)
+			fetch(`http://halde.cs.uni-magdeburg.de:8070/${variant.toLowerCase()}/generate`, requestOptions)
+				.then(response => response.blob())
+				.then(imageBlob => handleResponse(imageBlob));
+		}
+		if (variant === "ProgressiveGAN") {
+			const requestOptions = {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ seed: `${styleganSeed}`, gpu: `${gpu}`, truncation: `${truncation}` })
+			};
+			fetch(`http://halde.cs.uni-magdeburg.de:8070/pggan/generate`, requestOptions)
 				.then(response => response.blob())
 				.then(imageBlob => handleResponse(imageBlob));
 		} else {
@@ -305,6 +317,25 @@ export default function App() {
 								</Item>
 							</Grid>
 						</Grid>
+					}
+					{variant === "ProgressiveGAN" ?
+						<Grid sx={{ mt: 1 }} container spacing={2}>
+							<Grid xs={6} md={12}>
+								<Item>
+									<Typography variant="h6" gutterBottom sx={{ marginBottom: 2 }}>
+										Auswahl der Truncation: {truncation}
+									</Typography>
+									<Typography variant="body1" gutterBottom sx={{ marginBottom: 2, marginTop: 2 }}>
+										Die Truncation ist eine Zahl zwischen 0 und 1 und beeinflusst den Output des Models. Die gleiche Truncation sorgt jedoch immer für den gleichen Fingerabdruck.
+									</Typography>
+									<Stack direction="row" sx={{ mr: 2, ml: 2 }} spacing={2}>
+										<Slider min={0.000} max={1.000} step={0.001} value={truncation} onChange={(e) => setTruncation(e.target.value)} />
+									</Stack>
+								</Item>
+							</Grid>
+						</Grid>
+						:
+						null
 					}
 				</Box>
 				<Fab onClick={() => handleOpen()} sx={fabGreenStyle} variant="extended">
